@@ -1,7 +1,8 @@
-import { Button, Stack, SvgIcon, Menu, MenuItem, ListItemText } from "@mui/material";
+import { Button, Stack, SvgIcon, Menu, MenuItem, ListItemText, Alert } from "@mui/material";
 import { useState } from "react";
+import isEqual from "lodash/isEqual";
 import { useForm } from "react-hook-form";
-import { ApiGetCall, ApiPostCall } from "/src/api/ApiCall";
+import { ApiGetCall, ApiGetCallWithPagination, ApiPostCall } from "/src/api/ApiCall";
 import { CippDataTable } from "../CippTable/CippDataTable";
 import {
   ChevronDownIcon,
@@ -15,6 +16,7 @@ import { CippApiDialog } from "../CippComponents/CippApiDialog";
 import { Create, Key, Save, Sync } from "@mui/icons-material";
 import { CippPropertyListCard } from "../CippCards/CippPropertyListCard";
 import { CippCopyToClipBoard } from "../CippComponents/CippCopyToClipboard";
+import { Box } from "@mui/system";
 
 const CippApiClientManagement = () => {
   const [openAddClientDialog, setOpenAddClientDialog] = useState(false);
@@ -34,6 +36,12 @@ const CippApiClientManagement = () => {
     url: "/api/ExecApiClient",
     data: { Action: "GetAzureConfiguration" },
     queryKey: "AzureConfiguration",
+  });
+
+  const apiClients = ApiGetCallWithPagination({
+    url: "/api/ExecApiClient",
+    data: { Action: "List" },
+    queryKey: "ApiClients",
   });
 
   const handleMenuOpen = (event) => {
@@ -110,6 +118,7 @@ const CippApiClientManagement = () => {
         Action: "ResetSecret",
         ClientId: "ClientId",
       },
+      hideBulk: true,
     },
     {
       label: "Copy API Scope",
@@ -119,6 +128,7 @@ const CippApiClientManagement = () => {
         var scope = `api://${row.ClientId}/.default`;
         navigator.clipboard.writeText(scope);
       },
+      hideBulk: true,
     },
     {
       label: "Delete Client",
@@ -138,6 +148,7 @@ const CippApiClientManagement = () => {
         },
       ],
       relatedQueryKeys: ["ApiClients"],
+      multiPost: false,
     },
   ];
 
@@ -182,7 +193,12 @@ const CippApiClientManagement = () => {
                   </SvgIcon>
                   <ListItemText>Add Existing Client</ListItemText>
                 </MenuItem>
-                <MenuItem onClick={() => azureConfig.refetch()}>
+                <MenuItem
+                  onClick={() => {
+                    azureConfig.refetch();
+                    handleMenuClose();
+                  }}
+                >
                   <SvgIcon fontSize="small" sx={{ minWidth: "30px" }}>
                     <Sync />
                   </SvgIcon>
@@ -198,7 +214,10 @@ const CippApiClientManagement = () => {
             </>
           }
           propertyItems={[
-            { label: "API Auth Enabled", value: azureConfig.data?.Results?.Enabled },
+            {
+              label: "Microsoft Authentication Enabled",
+              value: azureConfig.data?.Results?.Enabled,
+            },
             {
               label: "API Url",
               value: azureConfig.data?.Results?.ApiUrl ? (
@@ -218,12 +237,47 @@ const CippApiClientManagement = () => {
                 "Not Available"
               ),
             },
+            {
+              label: "Tenant ID",
+              value: azureConfig.data?.Results?.TenantID ? (
+                <CippCopyToClipBoard type="chip" text={azureConfig.data?.Results?.TenantID} />
+              ) : (
+                "Not Available"
+              ),
+            },
           ]}
           layout="dual"
           showDivider={false}
           isFetching={azureConfig.isFetching}
         />
-
+        {azureConfig.isSuccess && azureConfig.data?.Results?.ClientIDs && (
+          <>
+            {!isEqual(
+              apiClients.data?.pages?.[0]?.Results?.filter((c) => c.Enabled)
+                .map((c) => c.ClientId)
+                .sort(),
+              azureConfig.data?.Results?.ClientIDs?.sort()
+            ) && (
+              <Box sx={{ px: 3 }}>
+                <Alert severity="warning">
+                  You have unsaved changes. Click Actions &gt; Save Azure Configuration to update
+                  the allowed API Clients.
+                </Alert>
+              </Box>
+            )}
+          </>
+        )}
+        {azureConfig.isSuccess && azureConfig.data?.Results?.Enabled === false && (
+          <Box sx={{ px: 3 }}>
+            <Alert severity="warning">
+              Microsoft Authentication is disabled. Configure API Clients and click Actions &gt;
+              Save Azure Configuration.
+            </Alert>
+          </Box>
+        )}
+        <Box sx={{ px: 3 }}>
+          <CippApiResults apiObject={postCall} />
+        </Box>
         <CippDataTable
           actions={actions}
           title="CIPP-API Clients"
@@ -235,7 +289,6 @@ const CippApiClientManagement = () => {
           simpleColumns={["Enabled", "AppName", "ClientId", "Role", "IPRange"]}
           queryKey={`ApiClients`}
         />
-        <CippApiResults apiObject={postCall} />
       </Stack>
 
       <CippApiDialog
