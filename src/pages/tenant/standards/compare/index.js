@@ -171,7 +171,7 @@ const Page = () => {
               const standardId = `standards.${standardKey}`;
               const standardInfo = standards.find((s) => s.name === standardId);
               const standardSettings = standardConfig.standards?.[standardKey] || {};
-              console.log(standardInfo);
+              //console.log(standardInfo);
 
               // Check if reporting is enabled for this standard by checking the action property
               // The standard should be reportable if there's an action with value === 'Report'
@@ -221,7 +221,7 @@ const Page = () => {
               // Use the direct standard value from the tenant object if it exists
               allStandards.push({
                 standardId,
-                standardName: standardInfo.label || standardKey,
+                standardName: standardInfo?.label || standardKey,
                 currentTenantValue:
                   directStandardValue !== undefined
                     ? directStandardValue
@@ -726,7 +726,7 @@ const Page = () => {
                                     </Typography>
                                     <Typography variant="body2">
                                       {typeof value === "object" && value !== null
-                                        ? value.label || JSON.stringify(value)
+                                        ? value?.label || JSON.stringify(value)
                                         : value === true
                                         ? "Enabled"
                                         : value === false
@@ -902,7 +902,7 @@ const Page = () => {
                                     {standard.complianceStatus === "Compliant" && value === true
                                       ? "Compliant"
                                       : typeof value === "object" && value !== null
-                                      ? value.label || JSON.stringify(value)
+                                      ? value?.label || JSON.stringify(value)
                                       : value === true
                                       ? "Enabled"
                                       : value === false
