@@ -12,7 +12,6 @@ export const PrivateRoute = ({ children, routeType }) => {
   } = ApiGetCall({
     url: "/api/me",
     queryKey: "authmecipp",
-    refetchOnWindowFocus: true,
   });
 
   const session = ApiGetCall({
@@ -22,13 +21,14 @@ export const PrivateRoute = ({ children, routeType }) => {
     staleTime: 120000, // 2 minutes
   });
 
+  // Check if the session is still loading before determining authentication status
+  if (session.isLoading || isLoading) {
+    return <LoadingPage />;
+  }
+
   // if not logged into swa
   if (null === session?.data?.clientPrincipal || session?.data === undefined) {
     return <UnauthenticatedPage />;
-  }
-
-  if (isLoading) {
-    return <LoadingPage />;
   }
 
   let roles = null;
@@ -36,6 +36,9 @@ export const PrivateRoute = ({ children, routeType }) => {
   if (
     session?.isSuccess &&
     isSuccess &&
+    undefined !== profile &&
+    session?.data?.clientPrincipal?.userDetails &&
+    profile?.userDetails &&
     session?.data?.clientPrincipal?.userDetails !== profile?.userDetails
   ) {
     // refetch the profile if the user details are different
